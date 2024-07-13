@@ -6,7 +6,7 @@ import ProfileScreen from './ProfileScreen';
 
 
 export default function App() {
-  const [currentScreen, setCurrentScreen] = useState('Home');
+  const [currentScreen, setCurrentScreen] = useState('Chat');
 
   const renderScreen = () => {
     if (currentScreen === 'Home') {

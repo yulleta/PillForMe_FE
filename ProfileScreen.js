@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, TextInput, View, Button, TouchableOpacity, ScrollView, Image } from 'react-native';
+import { StyleSheet, Text, TextInput, View, Button, TouchableOpacity, ScrollView, Image, ActivityIndicator } from 'react-native';
 // import CheckBox from '@react-native-community/checkbox';
 import Checkbox from 'expo-checkbox';
 import RNPickerSelect from 'react-native-picker-select';
@@ -74,6 +74,7 @@ export default function App({ setCurrentScreen }) {
     const [disease, setDisease] = useState('');
     const [healthConcerns, setHealthConcerns] = useState([null, null, null]);
     const [image, setImage] = useState();
+    const [isLoading, setIsLoading] = useState(false);
 
     useEffect(() => {
         setGender('');
@@ -103,84 +104,128 @@ export default function App({ setCurrentScreen }) {
         }
     };
 
-    console.log(image);
-    const moveToChat = () => {
+    const moveToChat = async () => {
         // 이미지 처리 후 채팅 화면으로 전환
-        setCurrentScreen('Chat');
-    }
+        setIsLoading(true);  // 로딩 상태 시작
+        user = {
+            'gender': parseInt(gender),
+            'age': parseInt(age),
+            'condition': parseInt(specialCondition),
+            'preference_category': healthConcerns
+        }
+
+        try {
+            const response = await fetch('http://127.0.0.1:5000/ga_result', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ user: user })  // 필요한 데이터를 여기에 추가
+            });
+
+            console.log(response)
+
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+
+            const data = await response.json();
+            console.log(data);  // 서버로부터 받은 데이터를 처리
+
+            // 로딩 상태 해제 후 채팅 화면으로 전환
+            setIsLoading(false);
+            setCurrentScreen('Chat');
+        } catch (error) {
+            console.error('Error:', error);
+            setIsLoading(false);
+        }
+    };
+
+    console.log(isLoading);
 
     return (
         <>
-            <View style={{ marginTop: 20 }}>
-                <TouchableOpacity style={styles.button} onPress={() => setCurrentScreen('Home')}>
-                    <Text style={styles.buttonText}>뒤로 가기</Text>
-                </TouchableOpacity>
-            </View>
-            <ScrollView contentContainerStyle={styles.container}>
-                <Text style={styles.headerText}>✨ 먼저 기본 인적 사항/건강 고민 정보를 입력해 주세요!</Text>
-                <Text style={styles.label}>🔹 성별</Text>
-                <RNPickerSelect
-                    onValueChange={(value) => setGender(value)}
-                    placeholder={{ label: '성별을 선택하세요', value: null }}
-                    items={[
-                        { label: '남성', value: 'male' },
-                        { label: '여성', value: 'female' },
-                    ]}
-                />
-                <Text style={styles.label}>🔹 나이</Text>
-                <TextInput
-                    style={styles.input}
-                    placeholder="나이를 입력하세요"
-                    keyboardType="numeric"
-                    onChangeText={setAge}
-                    value={age}
-                />
-                <Text style={styles.label}>🔹 특수 상태</Text>
-                <RNPickerSelect
-                    onValueChange={(value) => setSpecialCondition(value)}
-                    items={specialConditionOptions}
-                    placeholder={{ label: '특수 상태를 선택하세요', value: null }}
-                    value={specialCondition}
-                />
-
-                <Text style={styles.label}>🔹 유의 질병 사항</Text>
-                <RNPickerSelect
-                    onValueChange={(value) => setDisease(value)}
-                    items={diseaseOptions}
-                    placeholder={{ label: '질병을 선택하세요', value: null }}
-                    value={disease}
-                />
-
-                <Text style={styles.label}>🔹 건강 고민 정보</Text>
-                {healthConcerns.map((concern, index) => (
-                    <RNPickerSelect
-                        key={index}
-                        onValueChange={(value) => {
-                            const newConcerns = [...healthConcerns];
-                            newConcerns[index] = value;
-                            setHealthConcerns(newConcerns);
-                        }}
-                        items={healthConcernOptions}
-                        placeholder={{ label: `건강 고민 ${index + 1} 선택`, value: null }}
-                        value={healthConcerns[index]}
-                    />
-                ))}
-
-                <TouchableOpacity style={styles.button2} onPress={pickImage}>
-                    <Text style={styles.buttonText}>현재 먹고 있는 영양제 정보 추가하기</Text>
-                </TouchableOpacity>
-                <Text style={styles.reminderText}>영양제 성분함량 정보를 사진으로 찍어 갤러리에서 선택해주세요!</Text>
-                {image && (
-                    <View style={styles.imageContainer}>
-                        <Text style={styles.imageText}>선택된 이미지:</Text>
-                        <Image source={{ uri: image }} style={styles.image} />
+            {isLoading ?
+                <>
+                    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+                        <ActivityIndicator size="large" color='#69FFEF' />
+                        <Text style={styles.reminderText}> {'\n'}{'\n'}입력해주신 정보들을 바탕으로 {'\n'}영양제 조합 후보들을 구하고 있어요! {'\n'} 30초 정도만 기다려주세요! </Text>
                     </View>
-                )}
+                </>
+                :
+                <>
+                    <View style={{ marginTop: 20 }}>
+                        <TouchableOpacity style={styles.button} onPress={() => setCurrentScreen('Home')}>
+                            <Text style={styles.buttonText}>뒤로 가기</Text>
+                        </TouchableOpacity>
+                    </View>
+                    <ScrollView contentContainerStyle={styles.container}>
+                        <Text style={styles.headerText}>✨ 먼저 기본 인적 사항/건강 고민 정보를 입력해 주세요!</Text>
+                        <Text style={styles.label}>🔹 성별</Text>
+                        <RNPickerSelect
+                            onValueChange={(value) => setGender(value)}
+                            placeholder={{ label: '성별을 선택하세요', value: null }}
+                            items={[
+                                { label: '남성', value: '1' },
+                                { label: '여성', value: '0' },
+                            ]}
+                        />
+                        <Text style={styles.label}>🔹 나이</Text>
+                        <TextInput
+                            style={styles.input}
+                            placeholder="나이를 입력하세요"
+                            keyboardType="numeric"
+                            onChangeText={setAge}
+                            value={age}
+                        />
+                        <Text style={styles.label}>🔹 특수 상태</Text>
+                        <RNPickerSelect
+                            onValueChange={(value) => setSpecialCondition(value)}
+                            items={specialConditionOptions}
+                            placeholder={{ label: '특수 상태를 선택하세요', value: null }}
+                            value={specialCondition}
+                        />
 
-                <TouchableOpacity style={styles.button3} onPress={moveToChat}>
-                    <Text style={styles.buttonText}>✨ 필리와 채팅하며 맞춤 조합을 찾아봐요!</Text>
-                </TouchableOpacity>
-            </ScrollView>
+                        <Text style={styles.label}>🔹 유의 질병 사항</Text>
+                        <RNPickerSelect
+                            onValueChange={(value) => setDisease(value)}
+                            items={diseaseOptions}
+                            placeholder={{ label: '질병을 선택하세요', value: null }}
+                            value={disease}
+                        />
+
+                        <Text style={styles.label}>🔹 건강 고민 정보</Text>
+                        {healthConcerns.map((concern, index) => (
+                            <RNPickerSelect
+                                key={index}
+                                onValueChange={(value) => {
+                                    const newConcerns = [...healthConcerns];
+                                    newConcerns[index] = value;
+                                    setHealthConcerns(newConcerns);
+                                }}
+                                items={healthConcernOptions}
+                                placeholder={{ label: `건강 고민 ${index + 1} 선택`, value: null }}
+                                value={healthConcerns[index]}
+                            />
+                        ))}
+
+                        <TouchableOpacity style={styles.button2} onPress={pickImage}>
+                            <Text style={styles.buttonText}>현재 먹고 있는 영양제 정보 추가하기</Text>
+                        </TouchableOpacity>
+                        <Text style={styles.reminderText}>영양제 성분함량 정보를 사진으로 찍어 갤러리에서 선택해주세요!</Text>
+                        {image && (
+                            <View style={styles.imageContainer}>
+                                <Text style={styles.imageText}>선택된 이미지:</Text>
+                                <Image source={{ uri: image }} style={styles.image} />
+                            </View>
+                        )}
+
+                        <TouchableOpacity style={styles.button3} onPress={moveToChat}>
+                            <Text style={styles.buttonText}>✨ 필리와 채팅하며 맞춤 조합을 찾아봐요!</Text>
+                        </TouchableOpacity>
+                    </ScrollView>
+                </>
+            }
         </>
     );
 }
