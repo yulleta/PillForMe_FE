@@ -9,15 +9,19 @@
     "web": "expo start --web"
   },
   "dependencies": {
+    "@expo/metro-runtime": "~3.2.1",
     "@react-native-community/checkbox": "^0.5.17",
     "expo": "~51.0.20",
+    "expo-app-loading": "^2.1.1",
+    "expo-checkbox": "~3.0.0",
     "expo-image-picker": "^15.0.7",
     "expo-status-bar": "~1.12.1",
     "react": "18.2.0",
+    "react-dom": "18.2.0",
     "react-native": "0.74.3",
     "react-native-gifted-chat": "^2.4.0",
     "react-native-picker-select": "^9.1.3",
-    "expo-checkbox": "~3.0.0"
+    "react-native-web": "~0.19.10"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0"
