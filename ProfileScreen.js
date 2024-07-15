@@ -132,6 +132,9 @@ export default function App({ setCurrentScreen }) {
             const data = await response.json();
             console.log(data);  // 서버로부터 받은 데이터를 처리
 
+            ga_result = data["ga_result"]
+            // setGaResult(ga_result)
+
             // 로딩 상태 해제 후 채팅 화면으로 전환
             setIsLoading(false);
             setCurrentScreen('Chat');
