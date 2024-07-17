@@ -17,7 +17,6 @@ const health_concern_data = {
     '면역기능': 9,
     '혈중콜레스테롤': 10,
     '뼈건강': 11,
-    '노화&항산화': 12,
     '노화&향산화': 12, // 원데이터에 오타 있어서 추가함
     '여성건강': 13,
     '소화&위식도건강': 14,
@@ -27,7 +26,6 @@ const health_concern_data = {
     '두뇌활동': 18,
     '혈당': 19,
     '혈중중성지방': 20,
-    '치아&잇몸': 21,
     '치아잇몸&잇몸건강': 21, // 원데이터에 오타 있어서 추가함
     '임산부&태아건강': 22,
     '탈모&손톱건강': 23,
@@ -67,7 +65,7 @@ const specialConditionOptions = [
     { label: '수유부', value: 2 },
 ];
 
-export default function App({ setCurrentScreen }) {
+export default function App({ currentScreen, setCurrentScreen, setGoods, setBads, setAllHealth, setGaOutput, setUser }) {
     const [gender, setGender] = useState('');
     const [age, setAge] = useState('');
     const [specialCondition, setSpecialCondition] = useState('');
@@ -111,8 +109,11 @@ export default function App({ setCurrentScreen }) {
             'gender': parseInt(gender),
             'age': parseInt(age),
             'condition': parseInt(specialCondition),
-            'preference_category': healthConcerns
+            'preference_category': healthConcerns,
+            'disease': disease,
         }
+
+        setUser(user)
 
         try {
             const response = await fetch('http://127.0.0.1:5000/ga_result', {
@@ -132,17 +133,27 @@ export default function App({ setCurrentScreen }) {
             const data = await response.json();
             console.log(data);  // 서버로부터 받은 데이터를 처리
 
-            ga_result = data["ga_result"]
+            // ga_result = data["ga_result"]
             // setGaResult(ga_result)
 
             // 로딩 상태 해제 후 채팅 화면으로 전환
             setIsLoading(false);
+            setGoods(data["goods"]);
+            setBads(data["bads"]);
+            setAllHealth(data["all_health"]);
+            setGaOutput(data["ga_output"]);
             setCurrentScreen('Chat');
         } catch (error) {
             console.error('Error:', error);
             setIsLoading(false);
         }
     };
+
+    // useEffect(() => {
+    //     if (!isLoading) {
+    //         setCurrentScreen('Chat');
+    //     }
+    // }, [currentScreen])
 
     console.log(isLoading);
 

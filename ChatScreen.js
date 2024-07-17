@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, LogBox } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, LogBox, ActivityIndicator } from 'react-native';
 import { GiftedChat, Bubble } from 'react-native-gifted-chat';
 
 // 모든 경고 메시지 무시
@@ -63,37 +63,6 @@ const efficacy = {
     "호흡기건강": ["피로 개선", "감기 덜 걸림", "구내염 개선", "수면질 개선"]
 }
 
-const all_health = ['스트레스&수면_긴장완화',
-    '치아&잇몸_치아건강',
-    '여성건강_생리전증후군&생리통개선',
-    '장건강_유익균유해균균형도움',
-    '장건강_배변활동',
-    '임산부&태아건강',
-    '뼈건강_칼슘흡수촉진',
-    '갑상선건강',
-    '혈당_인슐린작용개선',
-    '혈중콜레스테롤_콜레스테롤흡수억제',
-    '면역기능',
-    '호흡기건강',
-    '눈건강_안구건조개선',
-    '피부건강_피부손상보호',
-    '눈건강_야맹증개선']
-
-
-const goods = [
-    ['양이 넉넉하여 장기간 복용 가능', '수면 질 개선', '체력과 피부 상태를 개선함', '알약 크기가 크고 냄새가 강함'],
-    ['장 활동 촉진', '안전한 보관을 위한 갈색병 제공', '딸기맛', '멀티비타민 보충 가능'],
-    ['눈떨림 개선', '알약 크기가 적당하고 무취', '가격이 저렴', '우수한 성분'],
-    ['무향', '속에서 냄새가 올라오는 부작용', '휴대성', '운동 후 피로감 개선'],
-    ['맛과 향이 좋아 먹기 쉬움', '아침에 쉬워짐', '맛과 향 좋음', '휴대하기 편리'],
-    ['눈의 피로 줄임', '알약 크기가 적당하고 먹기 편함', '면역력 증가', '피로감 감소']];
-const bads = [
-    ['비싼 영양제 값', '효과 미흡', '대용량', '맛과 향'],
-    ['섭취 불편함', '효능 정보 부족', '속쓰림', '가격'],
-    ['맛이 좋지 않음', '섭취 불편', '냄새가 강함', '졸음'],
-    ['해외직구로 구매하는 번거로움', '더운 곳에 보관 시 덩어리가 될 수 있음', '속이 부룩함', '엽산 함량 부족'],
-    ['소화불량 가능성', '효과 미비', '알약이 많아서 한 번에 섭취하기 어려움', '향이 좋지 않음'],
-    ['비타민 D 함량 부족', '부담감', '배송 지연 및 품질 불신', '목넘김이 불편함']];
 
 const splitArrayIntoChunks = (array, chunkSize) => {
     let result = [];
@@ -119,7 +88,13 @@ const playMatch = (player1, player2) => {
     return Math.random() > 0.5 ? player1 : player2;
 };
 
-const ChatScreen = ({ setCurrentScreen, setFinalResult }) => {
+const ChatScreen = ({ setCurrentScreen, finalResult, setFinalResult, goods, bads, allHealth, gaOutput }) => {
+
+    const goodss = [...goods];
+    const badss = [...bads];
+
+    const all_health = allHealth
+
     const initialMessages = [
         {
             _id: 1, // 고유한 메시지 ID
@@ -157,14 +132,14 @@ const ChatScreen = ({ setCurrentScreen, setFinalResult }) => {
 
     const [tournament, setTournament] = useState({ matches: [], currentMatch: 0 });
 
-    const [glrecResult, setGLRecResult] = useState([])
+    const [glRecResult, setGLRecResult] = useState([])
     const [isGlRecDone, setGLRecDone] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
 
     useEffect(() => {
         const selectedEfficacy = new Set();
 
-        all_health.forEach(health => {
+        all_health && all_health.forEach(health => {
             if (efficacy[health]) {
                 efficacy[health].forEach(effect => selectedEfficacy.add(effect));
             }
@@ -175,63 +150,69 @@ const ChatScreen = ({ setCurrentScreen, setFinalResult }) => {
         setHealthChunks(chunks);
     }, []);
 
-    useEffect(async () => {
-        isLoading(true);
-        try {
-            const response = await fetch('http://127.0.0.1:5000/glrec_result', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ efficacy: selectedHealth })  // 필요한 데이터를 여기에 추가
-            });
+    useEffect(() => {
+        async function fetchData() {
+            try {
+                const response = await fetch('http://127.0.0.1:5000/final_result', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ glRecResult: glRecResult, selectedGoods: selectedGoods, selectedBads: selectedBads, gaOutput: gaOutput })
+                });
 
-            // console.log(response)
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
 
-            if (!response.ok) {
-                throw new Error('Network response was not ok');
+                const data = await response.json();
+                setFinalResult(data["final_result"]);
+                setIsLoading(false);
+            } catch (error) {
+                console.error('Error:', error);
             }
-
-            const data = await response.json();
-            console.log(data);  // 서버로부터 받은 데이터를 처리
-
-            setGLRecResult(data["glrec_result"]);
-            setGLRecDone(true);
-        } catch (error) {
-            console.error('Error:', error);
-            // setIsLoading(false);
         }
-    }, [efficacyDone])
+        if (isGlRecDone & badsTDone) {
+            fetchData()
+        }
+    }, [isGlRecDone, badsTDone]);
 
-    useEffect(async () => {
-        isLoading(true);
-        try {
-            const response = await fetch('http://127.0.0.1:5000/final_result', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ glrecResult: glrecResult, selectedGoods: selectedGoods, selectedBads: selectedBads })  // 필요한 데이터를 여기에 추가
-            });
+    useEffect(() => {
+        async function fetchData() {
+            if (efficacyDone && !isGlRecDone) {
+                try {
+                    const response = await fetch('http://127.0.0.1:5000/glrec_result', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ efficacy: selectedHealth, gaOutput: gaOutput })  // 필요한 데이터를 여기에 추가
+                    });
 
-            // console.log(response)
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
 
-            if (!response.ok) {
-                throw new Error('Network response was not ok');
+                    const data = await response.json();
+                    // console.log(data);  // 서버로부터 받은 데이터를 처리
+
+                    setGLRecResult(data["glrec_result"]);
+                    setGLRecDone(true);
+                } catch (error) {
+                    console.error('Error:', error);
+                    // setIsLoading(false);
+                }
             }
-
-            const data = await response.json();
-            console.log(data);  // 서버로부터 받은 데이터를 처리
-
-            // 로딩 상태 해제 후 채팅 화면으로 전환
-            setIsLoading(false);
-            setFinalResult(data["final_result"])
-            // setCurrentScreen('Chat');
-        } catch (error) {
-            console.error('Error:', error);
-            // setIsLoading(false);
         }
-    }, [isGlRecDone])
+        fetchData();
+    }, [efficacyDone, glRecResult]);
+
+    // console.log("glRecResult : ", glRecResult);
+    // console.log("loading", isLoading)
+    // console.log("glRecDone", isGlRecDone)
+    // console.log("badsTDone", badsTDone)
+
+    useEffect(() => { setMessages(messages) }, [messages])
 
     useEffect(() => {
         if (!efficacyDone && currentStep !== 0 && currentStep === healthChunks.length) {
@@ -240,7 +221,7 @@ const ChatScreen = ({ setCurrentScreen, setFinalResult }) => {
                 ...prevMessages,
                 {
                     _id: prevMessages.length + 1,
-                    text: `선택한 효능 정보: ${selectedHealth.join(', ')}`,
+                    text: `선택한 효능 정보들: ${selectedHealth.join(', ')}`,
                     createdAt: new Date(),
                     user: { _id: 2, name: 'Chatbot', avatar: require('./assets/img/pilly.png') },
                 },
@@ -268,15 +249,16 @@ const ChatScreen = ({ setCurrentScreen, setFinalResult }) => {
         } else if (goodsDone && goodsTDone && badsDone && !badsTDone && currentStep === 7) {
             setCurrentStep(0);
             setBadsTDone(true);
+            setIsLoading(true);
         }
     }, [currentStep]);
 
-    console.log("goodsDone : ", goodsDone)
-    console.log("goodsTDone : ", goodsTDone);
-    console.log("badsDone : ", badsDone)
-    console.log("badsTDone : ", badsTDone);
-    console.log("currentStep: ", currentStep);
-    console.log("currentRound: ", tournament.currentRound)
+    // console.log("goodsDone : ", goodsDone)
+    // console.log("goodsTDone : ", goodsTDone);
+    // console.log("badsDone : ", badsDone)
+    // console.log("badsTDone : ", badsTDone);
+    // console.log("currentStep: ", currentStep);
+    // console.log("currentRound: ", tournament.currentRound)
     // console.log(messages)
 
 
@@ -298,7 +280,7 @@ const ChatScreen = ({ setCurrentScreen, setFinalResult }) => {
 
     const handleGoodsSelection = (good) => {
         setSelectedGoods([...selectedGoods, good]);
-        if (currentStep < goods.length) {
+        if (currentStep < goodss.length) {
             setCurrentStep(currentStep + 1);
             setMessages((prevMessages) => [
                 ...prevMessages,
@@ -362,11 +344,14 @@ const ChatScreen = ({ setCurrentScreen, setFinalResult }) => {
         );
     };
 
+    // console.log("goods: ", goodss);
+    // console.log("bads : ", badss)
+
     const renderGoodsOptions = () => {
-        if (currentStep >= goods.length) return null;
+        if (currentStep >= goodss.length) return null;
         return (
             <View style={styles.optionsContainer}>
-                {goods[currentStep].map((good, index) => (
+                {goodss[currentStep].map((good, index) => (
                     <TouchableOpacity key={Math.random()} style={styles.optionButton} onPress={() => handleGoodsSelection(good)}>
                         <Text style={styles.optionText}>{good}</Text>
                     </TouchableOpacity>
@@ -377,10 +362,10 @@ const ChatScreen = ({ setCurrentScreen, setFinalResult }) => {
     };
 
     const renderBadsOptions = () => {
-        if (currentStep >= bads.length) return null;
+        if (currentStep >= badss.length) return null;
         return (
             <View style={styles.optionsContainer}>
-                {bads[currentStep].map((bad, index) => (
+                {badss[currentStep].map((bad, index) => (
                     <TouchableOpacity key={Math.random()} style={styles.optionButton} onPress={() => handleBadsSelection(bad)}>
                         <Text style={styles.optionText}>{bad}</Text>
                     </TouchableOpacity>
@@ -556,7 +541,7 @@ const ChatScreen = ({ setCurrentScreen, setFinalResult }) => {
                 loser
             ];
 
-            console.log(winners)
+            // console.log(winners)
             !goodsTDone ?
                 setMessages((prevMessages) => [
                     ...prevMessages,
@@ -651,34 +636,44 @@ const ChatScreen = ({ setCurrentScreen, setFinalResult }) => {
     };
 
     const moveToEnd = () => {
-
+        console.log("finalResult : ", finalResult)
+        setCurrentScreen('Result');
     }
 
 
     return (
-        <>
-            <View style={{ marginTop: 50 }}>
-                <TouchableOpacity style={styles.header} onPress={() => setCurrentScreen('Home')}>
-                    <Text style={styles.headerText}>뒤로 가기</Text>
-                </TouchableOpacity>
+        isLoading ? (
+            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+                <ActivityIndicator size="large" color='#69FFEF' />
+                <Text style={styles.reminderText}>
+                    {'\n'}{'\n'}입력해주신 정보들을 바탕으로 {'\n'}영양제 최종 조합을 구하고 있어요! {'\n'} 30초 정도만 기다려주세요!
+                </Text>
             </View>
-            <GiftedChat
-                ref={giftedChatRef} // GiftedChat에 참조 설정
-                inverted={false}
-                renderBubble={renderBubble}
-                style={{ margin: 20, backgroundColor: '#69FFEF' }}
-                renderInputToolbar={renderInputToolbar}
-                messages={messages}
-                scrollToBottom
-                onSend={handleSend}
-                user={{ _id: 1 }}
-            />
-            {!efficacyDone ? renderHealthOptions() :
-                !goodsDone ? renderGoodsOptions() :
-                    !goodsTDone ? renderTournamentOptions() :
-                        !badsDone ? renderBadsOptions()
-                            : !badsTDone ? renderTournamentOptions() : moveToEnd()}
-        </>
+        ) : (
+            <View style={{ flex: 1 }}>
+                <View style={{ marginTop: 20 }}>
+                    <TouchableOpacity style={styles.header} onPress={() => setCurrentScreen('Home')}>
+                        <Text style={styles.headerText}>뒤로 가기</Text>
+                    </TouchableOpacity>
+                </View>
+                <GiftedChat
+                    ref={giftedChatRef} // GiftedChat에 참조 설정
+                    inverted={false}
+                    renderBubble={renderBubble}
+                    style={{ margin: 20, backgroundColor: '#69FFEF' }}
+                    renderInputToolbar={renderInputToolbar}
+                    messages={messages}
+                    scrollToBottom
+                    onSend={handleSend}
+                    user={{ _id: 1 }}
+                />
+                {!efficacyDone ? renderHealthOptions() :
+                    !goodsDone ? renderGoodsOptions() :
+                        !goodsTDone ? renderTournamentOptions() :
+                            !badsDone ? renderBadsOptions()
+                                : !badsTDone ? renderTournamentOptions() : !isLoading && moveToEnd()}
+            </View>
+        )
     );
 };
 
